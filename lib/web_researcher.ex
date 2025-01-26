@@ -4,15 +4,9 @@ defmodule WebResearcher do
   """
 
   @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> WebResearcher.hello()
-      :world
-
+  Fetches a webpage and returns a WebPage struct
   """
-  def hello do
-    :world
+  def get(url, opts \\ []) do
+    WebResearcher.Retriever.get(url, opts)
   end
 end
