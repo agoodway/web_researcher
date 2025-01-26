@@ -25,18 +25,16 @@ defmodule WebResearcher.Retriever do
         end
 
       error ->
-        Logger.error(
-          "Web Researcher - Req request failed #{inspect(error)}. Falling back to Playwright for #{url}"
-        )
+        Logger.error("Web Researcher - Req request failed #{inspect(error)}.")
 
-        get_with_playwright(url, opts)
+        error
     end
   end
 
   defp get_with_playwright(url, opts) do
     case Playwright.get(url, opts) do
-      {:ok, response} -> WebPage.from_response(url, response)
-      {:error, response} -> WebPage.from_response(url, response)
+      {_, response} ->
+        WebPage.from_response(url, response)
     end
   end
 

@@ -6,7 +6,7 @@ defmodule WebResearcher do
   @doc """
   Fetches a webpage and returns a WebPage struct
   """
-  def get(url, opts \\ []) do
+  def fetch_page(url, opts \\ []) do
     WebResearcher.Retriever.get(url, opts)
   end
 end

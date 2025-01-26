@@ -1,5 +1,4 @@
 defmodule WebResearcher.Retriever.Playwright do
-  @behaviour WebResearcher.Retriever
   require Logger
   alias WebResearcher.Retriever.Response
 

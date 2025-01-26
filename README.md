@@ -38,7 +38,7 @@ To ensure [Playwright's]([text](https://github.com/mechanical-orchard/playwright
 Fetch a webpage and return a markdown representation.
 
 ```elixir
-WebResearcher.Retriever.get("https://elixir-lang.org")
+WebResearcher.fetch_page("https://elixir-lang.org")
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)

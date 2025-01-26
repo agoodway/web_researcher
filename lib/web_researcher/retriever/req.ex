@@ -1,6 +1,5 @@
 defmodule WebResearcher.Retriever.Req do
   require Logger
-  @behaviour WebResearcher.Retriever
   alias WebResearcher.Retriever.Response
 
   @doc """
