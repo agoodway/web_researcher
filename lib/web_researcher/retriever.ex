@@ -22,7 +22,7 @@ defmodule WebResearcher.Retriever do
   def fetch(url, opts \\ []) do
     case fetch_with_req(url, opts) do
       {:ok, :needs_playwright} ->
-        if use_playwright_enabled?(opts) do
+        if playwright_enabled?(opts) do
           Logger.info(
             "Web Researcher - Content appears to be a SPA/dynamic page, using Playwright for #{url}"
           )
@@ -44,7 +44,7 @@ defmodule WebResearcher.Retriever do
     end
   end
 
-  defp use_playwright_enabled?(opts) do
+  defp playwright_enabled?(opts) do
     Keyword.get(
       opts,
       :use_playwright,
