@@ -7,6 +7,6 @@ defmodule WebResearcher do
   Fetches a webpage and returns a WebPage struct
   """
   def fetch_page(url, opts \\ []) do
-    WebResearcher.Retriever.get(url, opts)
+    WebResearcher.Retriever.fetch(url, opts)
   end
 end

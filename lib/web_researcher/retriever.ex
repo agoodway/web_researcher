@@ -8,33 +8,73 @@ defmodule WebResearcher.Retriever do
   @doc """
   Fetches a webpage using Req first, falling back to Playwright if needed.
   Returns {:ok, %WebPage{}} on success or {:error, %WebPage{}} on failure.
+
+  ## Configuration
+
+  The Playwright fallback can be disabled by setting the following in your config:
+
+      config :web_researcher, :use_playwright, false
+
+  It can also be overridden per-request by passing the `:use_playwright` option:
+
+      WebResearcher.Retriever.fetch(url, use_playwright: false)
   """
-  def get(url, opts \\ []) do
-    case Req.get(url, opts) do
-      {:ok, %Response{content: content} = response} when is_binary(content) ->
-        case use_playwright?(content) do
-          true ->
-            Logger.info(
-              "Web Researcher - Content appears to be a SPA/dynamic page, using Playwright for #{url}"
-            )
+  def fetch(url, opts \\ []) do
+    case fetch_with_req(url, opts) do
+      {:ok, :needs_playwright} ->
+        if use_playwright_enabled?(opts) do
+          Logger.info(
+            "Web Researcher - Content appears to be a SPA/dynamic page, using Playwright for #{url}"
+          )
 
-            get_with_playwright(url, opts)
+          fetch_with_playwright(url, opts)
+        else
+          Logger.info(
+            "Web Researcher - Content appears to need JavaScript but Playwright is disabled for #{url}"
+          )
 
-          false ->
-            WebPage.from_response(url, response)
+          {:error, :playwright_disabled}
         end
 
-      error ->
-        Logger.error("Web Researcher - Req request failed #{inspect(error)}.")
+      {:ok, response} ->
+        WebPage.from_response(url, response)
 
+      {:error, _} = error ->
         error
     end
   end
 
-  defp get_with_playwright(url, opts) do
+  defp use_playwright_enabled?(opts) do
+    Keyword.get(
+      opts,
+      :use_playwright,
+      Application.get_env(:web_researcher, :use_playwright, true)
+    )
+  end
+
+  defp fetch_with_req(url, opts) do
+    case Req.get(url, opts) do
+      {:ok, %Response{content: content} = response} when is_binary(content) ->
+        if use_playwright?(content) do
+          {:ok, :needs_playwright}
+        else
+          {:ok, response}
+        end
+
+      error ->
+        Logger.error("Web Researcher - Req request failed #{inspect(error)}.")
+        error
+    end
+  end
+
+  defp fetch_with_playwright(url, opts) do
     case Playwright.get(url, opts) do
-      {_, response} ->
+      {:ok, response} ->
         WebPage.from_response(url, response)
+
+      {:error, _} = error ->
+        Logger.error("Web Researcher - Playwright request failed #{inspect(error)}.")
+        error
     end
   end
 

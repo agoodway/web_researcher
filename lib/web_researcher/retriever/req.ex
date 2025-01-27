@@ -13,7 +13,7 @@ defmodule WebResearcher.Retriever.Req do
         %Response{status: :ok, content: body}
 
       error ->
-        Logger.error("WebResearcher - Failed to get #{url}: #{inspect(error)}")
+        Logger.error("WebResearcher - Failed to fetch #{url}: #{inspect(error)}")
         %Response{status: :failed, content: nil}
     end
     |> responder.()
