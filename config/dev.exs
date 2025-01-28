@@ -1,7 +1,14 @@
 import Config
 
 config :web_researcher,
-  # Web Researcher Development-specific settings
+  # Search adapter settings
+  search_adapter: WebResearcher.Search.Adapters.Brave,
+  search_defaults: [
+    limit: 10,
+    timeout: 10_000
+  ],
+
+  # Web page fetching settings
   use_playwright: true,
 
   # LLM Configuration
@@ -10,4 +17,7 @@ config :web_researcher,
   max_retries: String.to_integer(System.get_env("LLM_MAX_RETRIES", "3")),
   instructor_opts: [
     temperature: String.to_float(System.get_env("LLM_TEMPERATURE", "0.7"))
-  ]
+  ],
+
+  # API Keys and credentials
+  brave_api_key: System.get_env("BRAVE_API_KEY")

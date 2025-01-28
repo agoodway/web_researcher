@@ -3,11 +3,12 @@ defmodule WebResearcher.Retriever do
 
   alias WebResearcher.Retriever.{Req, Playwright, Response}
   alias WebResearcher.WebPage
+  alias WebResearcher.Search.Result
   require Logger
 
   @doc """
   Fetches a webpage using Req first, falling back to Playwright if needed.
-  Returns {:ok, %WebPage{}} on success or {:error, %WebPage{}} on failure.
+  Returns {:ok, %WebPage{}} on success or {:error, term()} on failure.
 
   ## Configuration
 
@@ -44,6 +45,93 @@ defmodule WebResearcher.Retriever do
     end
   end
 
+  @doc """
+  Performs a web search using the configured search adapter.
+  Returns {:ok, %Search.Result{}} containing just the search results.
+
+  ## Options
+
+    * `:adapter` - The search adapter to use (defaults to configured adapter)
+    * `:limit` - Maximum number of search results to return (default: 10)
+    * Any other options are passed to the search adapter
+
+  ## Example
+
+      iex> WebResearcher.Retriever.search_web("elixir programming", limit: 5)
+      {:ok, %Search.Result{query: "elixir programming", total_results: 5, result_items: [...]}}
+  """
+  def search_web(query, opts \\ []) do
+    adapter = get_search_adapter(opts)
+    limit = Keyword.get(opts, :limit, 10)
+
+    with {:ok, {results, total, metadata}} <-
+           adapter.search(query, Keyword.put(opts, :limit, limit)) do
+      Result.new(%{
+        query: query,
+        total_results: total,
+        provider: adapter.provider_name(),
+        provider_metadata: metadata,
+        result_items: results,
+        pages: []
+      })
+    end
+  end
+
+  @doc """
+  Performs a web search and fetches each result page in parallel.
+  Returns {:ok, %Search.Result{}} containing both search results and fetched pages.
+
+  ## Options
+
+    * `:adapter` - The search adapter to use (defaults to configured adapter)
+    * `:limit` - Maximum number of search results to return (default: 10)
+    * `:timeout` - Timeout for parallel page fetching in milliseconds (default: 10_000)
+    * Any other options are passed to both the search adapter and page fetcher
+
+  ## Example
+
+      iex> WebResearcher.Retriever.search_web_and_fetch_pages("elixir programming", limit: 5)
+      {:ok, %Search.Result{query: "elixir programming", total_results: 5, result_items: [...], pages: [...]}}
+  """
+  def search_web_and_fetch_pages(query, opts \\ []) do
+    adapter = get_search_adapter(opts)
+    timeout = Keyword.get(opts, :timeout, 10_000)
+    limit = Keyword.get(opts, :limit, 10)
+
+    with {:ok, {results, total, metadata}} <-
+           adapter.search(query, Keyword.put(opts, :limit, limit)) do
+      # Fetch all pages in parallel and filter out failed ones
+      pages =
+        results
+        |> Task.async_stream(
+          fn result -> fetch_page(result.url) end,
+          timeout: timeout,
+          on_timeout: :kill_task,
+          max_concurrency: 4
+        )
+        |> Enum.reduce([], fn
+          {:ok, {:ok, page}}, acc -> [page | acc]
+          _, acc -> acc
+        end)
+        |> Enum.reverse()
+
+      # Return the search result with pages
+      Result.new(%{
+        query: query,
+        total_results: total,
+        provider: adapter.provider_name(),
+        provider_metadata: metadata,
+        result_items: results,
+        pages: pages
+      })
+    end
+  end
+
+  defp get_search_adapter(opts) do
+    Keyword.get(opts, :adapter) ||
+      Application.get_env(:web_researcher, :search_adapter, WebResearcher.Search.Adapters.Brave)
+  end
+
   defp playwright_enabled?(opts) do
     Keyword.get(
       opts,
@@ -60,6 +148,17 @@ defmodule WebResearcher.Retriever do
         else
           {:ok, response}
         end
+
+      {:error, %Response{status: 429}} ->
+        Logger.warning(
+          "Web Researcher - Rate limited by #{url}, consider adding delay between requests"
+        )
+
+        {:error, :rate_limited}
+
+      {:error, %Response{status: status}} when status in [403, 401] ->
+        Logger.warning("Web Researcher - Access denied (#{status}) for #{url}")
+        {:error, :access_denied}
 
       error ->
         Logger.error("Web Researcher - Req request failed #{inspect(error)}.")

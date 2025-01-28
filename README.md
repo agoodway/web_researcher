@@ -1,14 +1,16 @@
 # Web Researcher
 
-Elixir library for web content extraction, processing and summarization. Features include web search with LLM powered summaries, fetching and parsing of single pages into markdown, and website crawling. Planned support multiple search adapters (Brave, Bing, SearXNG, etc) and proxy service.
+Elixir library for web content extraction, processing and summarization. Features include web search with LLM powered summaries, fetching and parsing of single pages into markdown, and website crawling. Planned support multiple search adapters (Brave, Bing, SerpAPI, SearXNG, etc) and proxy services.
 
 ## Planned Features
 
 - [x] Fetch webpage with Playwright fallback
+- [ ] Fetch webpages via search adapter
 - [x] HTML to Markdown conversion
-- [x] LLM-powered content summarization
+- [x] LLM-powered web page summarization
+- [ ] LLM-powered web search summarization
 - [x] Parse out Title and Description
-- [ ] Search adapter: Brave
+- [x] Search adapter: Brave
 - [ ] Search adapter: Bing
 - [ ] Search adapter: SearXNG
 - [ ] Proxy service integration
@@ -39,6 +41,9 @@ The following configuration options are available:
 config :web_researcher,
   use_playwright: true, # default: true
 
+  # Search adapter configuration
+  search_adapter: WebResearcher.Search.Adapters.Brave, # default adapter
+
   # LLM Configuration (based on Instructor)
   llm_model: "gpt-4-turbo",
   max_retries: 3, # default: 3
@@ -48,6 +53,29 @@ config :web_researcher,
     response_format: %{type: "json_object"}
   ]
 ```
+
+### Search Providers
+
+WebResearcher supports multiple search providers through adapters. Each adapter normalizes provider-specific results into a standard format with fields like title, description, URL, thumbnails, and more.
+
+Configure your preferred provider in your config:
+
+```elixir
+config :web_researcher,
+  search_adapter: WebResearcher.Search.Adapters.Brave # default
+```
+
+Or specify per-request:
+
+```elixir
+WebResearcher.search_web("query", adapter: MyCustomAdapter)
+```
+
+Current adapters:
+- Brave Search (default)
+- Bing (coming soon)
+- SearXNG (coming soon)
+- SerpAPI (coming soon)
 
 ### Playwright
 
@@ -79,6 +107,15 @@ WebResearcher.fetch_page("https://elixir-lang.org", use_playwright: false)
 {:ok, webpage} = WebResearcher.fetch_page_and_summarize("https://elixir-lang.org",
   model: "gpt-3.5-turbo",
   temperature: 0.5
+)
+
+# Search the web (results only)
+{:ok, result} = WebResearcher.search_web("elixir programming")
+
+# Search and fetch pages
+{:ok, result} = WebResearcher.search_web_and_fetch_pages("elixir programming",
+  limit: 5,           # Number of results (default: 10)
+  timeout: 15_000     # Page fetch timeout in ms (default: 10_000)
 )
 ```
 

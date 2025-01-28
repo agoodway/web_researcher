@@ -57,4 +57,24 @@ defmodule WebResearcher.WebPage do
     |> validate_required([:url, :status])
     |> apply_action(:insert)
   end
+
+  @doc """
+  Creates a changeset for a WebPage struct.
+  """
+  def changeset(webpage, attrs) do
+    webpage
+    |> cast(attrs, [
+      :url,
+      :title,
+      :description,
+      :content,
+      :markdown,
+      :summary,
+      :keywords,
+      :metadata,
+      :status,
+      :links
+    ])
+    |> validate_required([:url, :status])
+  end
 end
