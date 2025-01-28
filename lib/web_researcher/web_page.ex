@@ -5,7 +5,7 @@ defmodule WebResearcher.WebPage do
 
   use Ecto.Schema
   import Ecto.Changeset
-  alias WebResearcher.Retriever.Response
+  alias WebResearcher.{Retriever.Response, Parser}
 
   @primary_key false
   embedded_schema do
@@ -17,6 +17,7 @@ defmodule WebResearcher.WebPage do
     field(:summary, :string)
     field(:keywords, {:array, :string}, default: [])
     field(:metadata, :map, default: %{})
+    field(:links, {:array, :map}, default: [])
     field(:status, Ecto.Enum, values: [:ok, :failed])
   end
 
@@ -29,6 +30,7 @@ defmodule WebResearcher.WebPage do
           summary: String.t() | nil,
           keywords: [String.t()],
           metadata: map(),
+          links: [%{title: String.t(), url: String.t()}],
           status: :ok | :failed
         }
 
@@ -36,15 +38,22 @@ defmodule WebResearcher.WebPage do
   Creates a new WebPage struct from a Retriever.Response.
   """
   def from_response(url, %Response{status: status, content: content}) do
-    attrs = %{
-      url: url,
-      content: content,
-      status: status,
-      markdown: if(content, do: Html2Markdown.convert(content))
-    }
+    parsed_content =
+      case Parser.parse_content(content) do
+        {:ok, parsed} -> parsed
+        _ -> %{markdown: nil, title: nil, description: nil, links: []}
+      end
+
+    attrs =
+      %{
+        url: url,
+        content: content,
+        status: status
+      }
+      |> Map.merge(parsed_content)
 
     %__MODULE__{}
-    |> cast(attrs, [:url, :content, :markdown, :status])
+    |> cast(attrs, [:url, :content, :markdown, :status, :title, :description, :links])
     |> validate_required([:url, :status])
     |> apply_action(:insert)
   end
