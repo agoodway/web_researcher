@@ -34,9 +34,7 @@ defmodule WebResearcher.Summarizer do
     @impl true
     def validate_changeset(changeset) do
       changeset
-      |> validate_required([:summary, :keywords])
-      |> validate_length(:summary, min: 500, max: 20_000)
-      |> validate_length(:keywords, min: 3, max: 15)
+      |> validate_required([:summary])
     end
 
     def system_prompt do
@@ -83,12 +81,14 @@ defmodule WebResearcher.Summarizer do
       - Focus on main topics and core concepts
       - Include technical terms and important nomenclature
       - Ensure keywords reflect the full scope of content
+      - Generally, keywords are not the same as metadata
 
       METADATA:
       - Store all structured data (tables, lists) as properly formatted JSON
       - Include any dates, authors, categories found
       - Preserve data types (numbers, dates, etc.)
       - Maintain hierarchical relationships in data
+      - Generally, metadata is not the same as keywords
 
       Remember: Write directly about the subject matter. Never reference the webpage, article, or content itself.
       Focus on delivering comprehensive, accurate information in a clear, direct style.
