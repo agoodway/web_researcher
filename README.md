@@ -59,39 +59,49 @@ config :web_researcher,
   ]
 ```
 
-### Search Providers
+## Search Providers
 
-WebResearcher supports multiple search providers through adapters. Each adapter normalizes provider-specific results into a standard format with fields like title, description, URL, thumbnails, and more.
+WebResearcher supports multiple search providers to gather web content:
 
-Configure your preferred provider in your config:
+### SearXNG (Default)
 
-```elixir
-config :web_researcher,
-  search_adapter: WebResearcher.Search.Adapters.Brave # default
-```
+[SearXNG](https://github.com/searxng/searxng) is a privacy-respecting, self-hostable metasearch engine that aggregates results from various search services. Benefits include:
 
-Or specify per-request:
+Configure SearXNG in your config:
 
 ```elixir
-WebResearcher.search_web("query", adapter: MyCustomAdapter)
+config :web_researcher, :searxng,
+  base_url: System.get_env("SEARXNG_BASE_URL", "http://localhost:8080"),
+  engines: "duckduckgo,brave,google",
+  language: "en"
 ```
 
-Current adapters:
-- Brave Search (default)
-- Bing (coming soon)
-- SearXNG (coming soon)
-- SerpAPI (coming soon)
+When running SearXNG via Docker, you'll need the following additional configuration:
 
-### Playwright
+In `settings.yaml`:
+```yaml
+search:
+  formats:
+    - json
+```
 
-Playwright support is optional but recommended for fetching JavaScript-heavy pages and Single Page Applications (SPAs). The library will first attempt to fetch pages using standard HTTP requests, and only fall back to Playwright when necessary.
+In `docker-compose.yaml`:
+```yaml
+    environment:
+      - SEARXNG_REQUEST_TIMEOUT=10.0
+      - SEARXNG_LIMITER=false
+      - SEARXNG_REDIS_URL=redis://redis:6379/0
+```
 
-When enabled, WebResearcher maintains a persistent Playwright browser instance in your application's supervision tree and automatically restarts it if it crashes.
+These settings enable JSON response format and configure appropriate timeouts and rate limiting for local development.
 
-To ensure [Playwright's](https://github.com/mechanical-orchard/playwright-elixir) runtime dependencies (e.g., browsers) are available, execute the following command:
+### Brave Search
 
-```bash
-mix playwright.install
+An alternative search provider with its own independent index. Requires an API key:
+
+```elixir
+config :web_researcher, :brave,
+  api_key: System.get_env("BRAVE_API_KEY")
 ```
 
 ## Usage

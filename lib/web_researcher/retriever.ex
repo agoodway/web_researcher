@@ -160,7 +160,7 @@ defmodule WebResearcher.Retriever do
 
   defp get_search_adapter(opts) do
     Keyword.get(opts, :adapter) ||
-      Application.get_env(:web_researcher, :search_adapter, WebResearcher.Search.Adapters.Brave)
+      Application.get_env(:web_researcher, :search_adapter, WebResearcher.Search.Adapters.SearXNG)
   end
 
   defp playwright_enabled?(opts) do
