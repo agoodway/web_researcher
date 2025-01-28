@@ -7,7 +7,7 @@ Elixir library for web content extraction, processing and summarization. Feature
 - [x] Fetch webpage with Playwright fallback
 - [x] HTML to Markdown conversion
 - [x] LLM-powered content summarization
-- [ ] Parse out Title and Description
+- [x] Parse out Title and Description
 - [ ] Search adapter: Brave
 - [ ] Search adapter: Bing
 - [ ] Search adapter: SearXNG
