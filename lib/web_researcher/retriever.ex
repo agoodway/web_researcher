@@ -17,9 +17,9 @@ defmodule WebResearcher.Retriever do
 
   It can also be overridden per-request by passing the `:use_playwright` option:
 
-      WebResearcher.Retriever.fetch(url, use_playwright: false)
+      WebResearcher.Retriever.fetch_page(url, use_playwright: false)
   """
-  def fetch(url, opts \\ []) do
+  def fetch_page(url, opts \\ []) do
     case fetch_with_req(url, opts) do
       {:ok, :needs_playwright} ->
         if playwright_enabled?(opts) do

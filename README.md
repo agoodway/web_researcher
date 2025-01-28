@@ -6,7 +6,8 @@ Elixir library for web content extraction, processing and summarization. Feature
 
 - [x] Fetch webpage with Playwright fallback
 - [x] HTML to Markdown conversion
-- [ ] LLM-powered content summarization
+- [x] LLM-powered content summarization
+- [ ] Parse out Title and Description
 - [ ] Search adapter: Brave
 - [ ] Search adapter: Bing
 - [ ] Search adapter: SearXNG
@@ -27,27 +28,37 @@ def deps do
 end
 ```
 
-### Playwright
-
-Playwright support is optional but recommended for fetching JavaScript-heavy pages and Single Page Applications (SPAs). The library will first attempt to fetch pages using standard HTTP requests, and only fall back to Playwright when necessary.
-
-When enabled, WebResearcher maintains a persistent Playwright browser instance in your application's supervision tree and automatically restarts it if it crashes.
-
-To ensure [Playwright's]([text](https://github.com/mechanical-orchard/playwright-elixir)) runtime dependencies (e.g., browsers) are available, execute the following command:
-
-```bash
-mix playwright.install
-```
-
 ## Configuration
 
 The following configuration options are available:
 
 ```elixir
 # config/config.exs
+
+# Enable/disable Playwright fallback for JavaScript-heavy pages
 config :web_researcher,
-  # Enable/disable Playwright fallback for JavaScript-heavy pages
-  use_playwright: false # default: true
+  use_playwright: true, # default: true
+
+  # LLM Configuration (based on Instructor)
+  llm_model: "gpt-4-turbo",
+  max_retries: 3, # default: 3
+  instructor_opts: [ # default: []
+    # Any additional Instructor options
+    temperature: 0.7,
+    response_format: %{type: "json_object"}
+  ]
+```
+
+### Playwright
+
+Playwright support is optional but recommended for fetching JavaScript-heavy pages and Single Page Applications (SPAs). The library will first attempt to fetch pages using standard HTTP requests, and only fall back to Playwright when necessary.
+
+When enabled, WebResearcher maintains a persistent Playwright browser instance in your application's supervision tree and automatically restarts it if it crashes.
+
+To ensure [Playwright's](https://github.com/mechanical-orchard/playwright-elixir) runtime dependencies (e.g., browsers) are available, execute the following command:
+
+```bash
+mix playwright.install
 ```
 
 ## Usage
@@ -60,6 +71,15 @@ WebResearcher.fetch_page("https://elixir-lang.org")
 
 # Disable Playwright for a specific request
 WebResearcher.fetch_page("https://elixir-lang.org", use_playwright: false)
+
+# Fetch and summarize a webpage
+{:ok, webpage} = WebResearcher.fetch_page_and_summarize("https://elixir-lang.org")
+
+# Override LLM options for a specific request
+{:ok, webpage} = WebResearcher.fetch_page_and_summarize("https://elixir-lang.org",
+  model: "gpt-3.5-turbo",
+  temperature: 0.5
+)
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)

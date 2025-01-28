@@ -13,6 +13,10 @@ defmodule WebResearcher.WebPage do
     field(:content, :string)
     field(:markdown, :string)
     field(:title, :string)
+    field(:description, :string)
+    field(:summary, :string)
+    field(:keywords, {:array, :string}, default: [])
+    field(:metadata, :map, default: %{})
     field(:status, Ecto.Enum, values: [:ok, :failed])
   end
 
@@ -21,6 +25,10 @@ defmodule WebResearcher.WebPage do
           content: String.t() | nil,
           markdown: String.t() | nil,
           title: String.t() | nil,
+          description: String.t() | nil,
+          summary: String.t() | nil,
+          keywords: [String.t()],
+          metadata: map(),
           status: :ok | :failed
         }
 

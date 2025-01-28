@@ -25,7 +25,8 @@ defmodule WebResearcher.MixProject do
       {:req, "~> 0.5.8"},
       {:html2markdown, "~> 0.1.5"},
       {:playwright, "~> 1.49.1-alpha.1"},
-      {:ecto, "~> 3.12.5"}
+      {:ecto, "~> 3.12.5"},
+      {:instructor, github: "thmsmlr/instructor_ex", branch: "main"}
     ]
   end
 end

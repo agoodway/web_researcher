@@ -24,3 +24,6 @@ web_researcher-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Environment variables
+.env
