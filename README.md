@@ -5,14 +5,15 @@ Elixir library for web content extraction, processing and summarization. Feature
 ## Planned Features
 
 - [x] Fetch webpage with Playwright fallback
-- [ ] Fetch webpages via search adapter
+- [x] Fetch webpages via search adapter
 - [x] HTML to Markdown conversion
 - [x] LLM-powered web page summarization
 - [ ] LLM-powered web search summarization
 - [x] Parse out Title and Description
+- [x] Search adapter: SearXNG
 - [x] Search adapter: Brave
 - [ ] Search adapter: Bing
-- [ ] Search adapter: SearXNG
+- [ ] Search adapter: SerpAPI
 - [ ] Proxy service integration
 - [ ] Detect if webpage is RSS and crawl
 - [ ] Website crawling (based on sitemap) with rate limiting
@@ -37,17 +38,17 @@ The following configuration options are available:
 ```elixir
 # config/config.exs
 
-# Enable/disable Playwright fallback for JavaScript-heavy pages
 config :web_researcher,
-  use_playwright: true, # default: true
+# Enable/disable Playwright fallback for JavaScript-heavy pages
+  use_playwright: false, # default: true
 
   # Task supervisor configuration for parallel operations
-  max_concurrency: 4,    # Maximum number of concurrent tasks (default: 4)
+  max_concurrency: 4,    # Maximum number of concurrent tasks (default is dynamic)
   task_timeout: 10_000,  # Default timeout for tasks in ms (default: 10_000)
   task_shutdown: 5_000,  # Shutdown timeout in ms (default: 5_000)
 
   # Search adapter configuration
-  search_adapter: WebResearcher.Search.Adapters.Brave, # default adapter
+  search_adapter: WebResearcher.Search.Adapters.Brave,
 
   # LLM Configuration (based on Instructor)
   llm_model: "gpt-4-turbo",
@@ -63,9 +64,9 @@ config :web_researcher,
 
 WebResearcher supports multiple search providers to gather web content:
 
-### SearXNG (Default)
+### SearXNG
 
-[SearXNG](https://github.com/searxng/searxng) is a privacy-respecting, self-hostable metasearch engine that aggregates results from various search services. Benefits include:
+[SearXNG](https://github.com/searxng/searxng) is a privacy-respecting, self-hostable metasearch engine that aggregates results from various search services.
 
 Configure SearXNG in your config:
 
@@ -76,7 +77,7 @@ config :web_researcher, :searxng,
   language: "en"
 ```
 
-When running SearXNG via Docker, you'll need the following additional configuration:
+When running [SearXNG]([text](https://docs.searxng.org/dev/search_api.html)) via [Docker](https://github.com/searxng/searxng-docker), you'll need the following additional configuration:
 
 In `settings.yaml`:
 ```yaml
@@ -95,9 +96,9 @@ In `docker-compose.yaml`:
 
 These settings enable JSON response format and configure appropriate timeouts and rate limiting for local development.
 
-### Brave Search
+### Brave Search API
 
-An alternative search provider with its own independent index. Requires an API key:
+Popular search provider with its own independent index and optional summarization. [Brave](https://brave.com/search/api/) requires an API key:
 
 ```elixir
 config :web_researcher, :brave,
