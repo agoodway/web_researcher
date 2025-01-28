@@ -1,7 +1,6 @@
 defmodule WebResearcher.Config do
   @moduledoc """
-  Configuration module for WebResearcher.
-  Handles configuration for LLM models and Instructor settings.
+  Handles configuration for WebResearcher, providing defaults and runtime configuration.
   """
 
   @doc """
@@ -77,53 +76,62 @@ defmodule WebResearcher.Config do
   end
 
   @doc """
-  Gets the complete Instructor configuration options.
-  These are used to configure the Instructor client itself.
+  Gets task supervisor configuration.
+  """
+  def get_task_config(opts \\ []) do
+    [
+      max_concurrency: get_in_opts_or_config(opts, :max_concurrency, 4),
+      timeout: get_in_opts_or_config(opts, :timeout, 10_000),
+      shutdown: get_in_opts_or_config(opts, :task_shutdown, 5_000)
+    ]
+  end
+
+  @doc """
+  Gets instructor configuration for LLM operations.
   """
   def get_instructor_config(opts \\ []) do
-    base = [
-      provider: llm_provider(),
-      api_key: llm_api_key(),
-      max_retries: max_retries(),
-      min_retries: min_retries()
-    ]
+    %{
+      api_key: get_in_opts_or_config(opts, :api_key),
+      model: get_in_opts_or_config(opts, :model, "gpt-4-turbo"),
+      api_base: get_in_opts_or_config(opts, :api_base),
+      organization_id: get_in_opts_or_config(opts, :organization_id)
+    }
+  end
 
-    base =
-      if org_id = llm_organization_id() do
-        Keyword.put(base, :organization_id, org_id)
-      else
-        base
-      end
-
-    base =
-      if url = llm_api_base_url() do
-        Keyword.put(base, :api_base_url, url)
-      else
-        base
-      end
-
+  @doc """
+  Gets request configuration for LLM operations.
+  """
+  def get_request_opts(opts \\ []) do
     Keyword.merge(
-      base,
-      Keyword.take(opts, [:provider, :api_key, :organization_id, :api_base_url])
+      [
+        model: get_in_opts_or_config(opts, :model, "gpt-4-turbo"),
+        max_retries: get_in_opts_or_config(opts, :max_retries, 3)
+      ],
+      Application.get_env(:web_researcher, :instructor_opts, [])
     )
   end
 
   @doc """
-  Gets the request options to be sent to the LLM API.
-  These are the options that will be included in the API request.
+  Gets search adapter configuration.
   """
-  def get_request_opts(opts \\ []) do
-    base = [
-      model: llm_model(),
-      temperature: 0.7,
-      # Only include max_retries, not min_retries
-      max_retries: max_retries()
+  def get_search_config(opts \\ []) do
+    [
+      adapter: get_in_opts_or_config(opts, :search_adapter, WebResearcher.Search.Adapters.Brave)
     ]
+  end
 
-    base
-    |> Keyword.merge(instructor_opts())
-    # Ensure min_retries is not included in API request
-    |> Keyword.drop([:min_retries])
-    |> Keyword.merge(Keyword.drop(opts, [:provider, :api_key, :organization_id, :api_base_url]))
+  @doc """
+  Gets Playwright configuration.
+  """
+  def get_playwright_config(opts \\ []) do
+    [
+      enabled: get_in_opts_or_config(opts, :use_playwright, true)
+    ]
+  end
+
+  # Helper to get value from opts, config, or default
+  defp get_in_opts_or_config(opts, key, default \\ nil) do
+    Keyword.get(opts, key) ||
+      Application.get_env(:web_researcher, key, default)
   end
 end

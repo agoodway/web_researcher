@@ -41,6 +41,11 @@ The following configuration options are available:
 config :web_researcher,
   use_playwright: true, # default: true
 
+  # Task supervisor configuration for parallel operations
+  max_concurrency: 4,    # Maximum number of concurrent tasks (default: 4)
+  task_timeout: 10_000,  # Default timeout for tasks in ms (default: 10_000)
+  task_shutdown: 5_000,  # Shutdown timeout in ms (default: 5_000)
+
   # Search adapter configuration
   search_adapter: WebResearcher.Search.Adapters.Brave, # default adapter
 

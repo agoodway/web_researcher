@@ -95,23 +95,54 @@ defmodule WebResearcher.Retriever do
   """
   def search_web_and_fetch_pages(query, opts \\ []) do
     adapter = get_search_adapter(opts)
-    timeout = Keyword.get(opts, :timeout, 10_000)
+
+    timeout =
+      Keyword.get(opts, :timeout, Application.get_env(:web_researcher, :task_timeout, 10_000))
+
+    max_concurrency =
+      Keyword.get(
+        opts,
+        :max_concurrency,
+        Application.get_env(:web_researcher, :max_concurrency, System.schedulers_online())
+      )
+
     limit = Keyword.get(opts, :limit, 10)
 
     with {:ok, {results, total, metadata}} <-
            adapter.search(query, Keyword.put(opts, :limit, limit)) do
-      # Fetch all pages in parallel and filter out failed ones
+      # Fetch all pages in parallel using task supervisor
       pages =
-        results
-        |> Task.async_stream(
-          fn result -> fetch_page(result.url) end,
+        Task.Supervisor.async_stream_nolink(
+          WebResearcher.TaskSupervisor,
+          results,
+          fn result ->
+            try do
+              fetch_page(result.url)
+            rescue
+              e ->
+                Logger.error("Failed to fetch page #{result.url}: #{inspect(e)}")
+                {:error, :fetch_failed}
+            end
+          end,
+          ordered: true,
           timeout: timeout,
           on_timeout: :kill_task,
-          max_concurrency: 4
+          max_concurrency: max_concurrency
         )
         |> Enum.reduce([], fn
-          {:ok, {:ok, page}}, acc -> [page | acc]
-          _, acc -> acc
+          {:ok, {:ok, page}}, acc ->
+            [page | acc]
+
+          {:ok, {:error, reason}}, acc ->
+            Logger.debug("Skipping failed page fetch: #{inspect(reason)}")
+            acc
+
+          {:exit, reason}, acc ->
+            Logger.debug("Task exited: #{inspect(reason)}")
+            acc
+
+          _, acc ->
+            acc
         end)
         |> Enum.reverse()
 

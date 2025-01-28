@@ -1,23 +1,31 @@
 import Config
 
 config :web_researcher,
-  # Search adapter settings
-  search_adapter: WebResearcher.Search.Adapters.Brave,
-  search_defaults: [
-    limit: 10,
-    timeout: 10_000
-  ],
+  # Task supervisor configuration
+  max_concurrency: 4,
+  task_timeout: 10_000,
+  task_shutdown: 5_000,
 
-  # Web page fetching settings
+  # Search configuration
+  search_adapter: WebResearcher.Search.Adapters.Brave,
+
+  # Playwright configuration
   use_playwright: true,
 
-  # LLM Configuration
-  llm_provider: String.to_atom(System.get_env("LLM_PROVIDER", "openai")),
-  llm_model: System.get_env("LLM_MODEL", "gpt-3.5-turbo"),
-  max_retries: String.to_integer(System.get_env("LLM_MAX_RETRIES", "3")),
+  # LLM configuration
+  llm_model: "gpt-4-turbo",
+  max_retries: 3,
   instructor_opts: [
-    temperature: String.to_float(System.get_env("LLM_TEMPERATURE", "0.7"))
-  ],
+    temperature: 0.7,
+    response_format: %{type: "json_object"}
+  ]
 
-  # API Keys and credentials
-  brave_api_key: System.get_env("BRAVE_API_KEY")
+# Provider-specific configuration
+config :web_researcher, :brave, api_key: System.get_env("BRAVE_API_KEY")
+
+# LLM provider configuration
+config :web_researcher, :llm,
+  provider: :openai,
+  api_key: System.get_env("OPENAI_API_KEY"),
+  organization_id: System.get_env("OPENAI_ORGANIZATION_ID"),
+  api_base: System.get_env("OPENAI_API_BASE_URL")
