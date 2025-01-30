@@ -5,6 +5,7 @@ defmodule WebResearcher.Search.ResultItem do
   """
   use Ecto.Schema
   import Ecto.Changeset
+  alias WebResearcher.WebPage
 
   @primary_key false
   embedded_schema do
@@ -25,6 +26,7 @@ defmodule WebResearcher.Search.ResultItem do
     field(:content_type, :string)
     field(:extra_snippets, {:array, :string}, default: [])
     field(:source_engines, {:array, :string}, default: [])
+    embeds_one(:web_page, WebPage)
   end
 
   @type t :: %__MODULE__{
@@ -44,7 +46,8 @@ defmodule WebResearcher.Search.ResultItem do
           position: integer() | nil,
           content_type: String.t() | nil,
           extra_snippets: [String.t()],
-          source_engines: [String.t()]
+          source_engines: [String.t()],
+          web_page: WebPage.t() | nil
         }
 
   @doc """
@@ -74,6 +77,9 @@ defmodule WebResearcher.Search.ResultItem do
     ])
     |> validate_required([:title, :url])
     |> validate_url(:url)
+    |> validate_list_type(:extra_snippets, :string)
+    |> validate_list_type(:source_engines, :string)
+    |> cast_embed(:web_page, required: false)
   end
 
   # Ensures URL has a valid scheme and host
@@ -84,5 +90,22 @@ defmodule WebResearcher.Search.ResultItem do
         _ -> [{field, "must be a valid URL"}]
       end
     end)
+  end
+
+  # Validates that a list field contains only elements of the specified type
+  defp validate_list_type(changeset, field, type) do
+    case get_change(changeset, field) do
+      nil -> changeset
+      value when not is_list(value) -> add_error(changeset, field, "must be a list")
+      list -> validate_list_elements(changeset, field, list, type)
+    end
+  end
+
+  defp validate_list_elements(changeset, field, list, :string) do
+    if Enum.all?(list, &is_binary/1) do
+      changeset
+    else
+      add_error(changeset, field, "must contain only strings")
+    end
   end
 end

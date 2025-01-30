@@ -143,7 +143,7 @@ defmodule WebResearcher.Search.Adapters.SearXNG do
           score: result["score"],
           position: List.first(result["positions"]),
           content_type: nil,
-          extra_snippets: answers,
+          extra_snippets: extract_snippets(result),
           source_engines: result["engines"]
         }
 
@@ -159,7 +159,8 @@ defmodule WebResearcher.Search.Adapters.SearXNG do
           unresponsive_engines: response["unresponsive_engines"],
           suggestions: response["suggestions"],
           corrections: response["corrections"],
-          infoboxes: response["infoboxes"]
+          infoboxes: response["infoboxes"],
+          answers: answers
         }
 
         {:ok, {valid_results, length(results), metadata}}
@@ -172,4 +173,19 @@ defmodule WebResearcher.Search.Adapters.SearXNG do
   defp parse_response(_, _) do
     {:error, "Invalid response format"}
   end
+
+  # Extract additional snippets from the result
+  defp extract_snippets(result) do
+    []
+    |> maybe_add_snippet(result["content"])
+    |> maybe_add_snippets(result["additional_snippets"])
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp maybe_add_snippet(snippets, nil), do: snippets
+  defp maybe_add_snippet(snippets, snippet), do: [snippet | snippets]
+
+  defp maybe_add_snippets(snippets, nil), do: snippets
+  defp maybe_add_snippets(snippets, additional), do: snippets ++ additional
 end

@@ -47,6 +47,12 @@ config :web_researcher,
   task_timeout: 10_000,  # Default timeout for tasks in ms (default: 10_000)
   task_shutdown: 5_000,  # Shutdown timeout in ms (default: 5_000)
 
+  # HTTP client retry configuration
+  req: [
+    max_retries: 3,      # Number of retries for failed requests (default: 0)
+    retry_delay: 2000    # Base delay between retries in ms (default: 1000)
+  ],
+
   # Search adapter configuration
   search_adapter: WebResearcher.Search.Adapters.Brave,
 
@@ -58,6 +64,26 @@ config :web_researcher,
     temperature: 0.7,
     response_format: %{type: "json_object"}
   ]
+```
+
+### HTTP Client Configuration
+
+The library uses Req as its HTTP client with configurable retry behavior. By default, retries are disabled (max_retries: 0). When retries are enabled:
+- Uses exponential backoff (retry_delay * attempt)
+- Only retries on connection errors and 5xx responses
+- Can be configured globally or per-request
+
+Example with retries enabled:
+```elixir
+# Global configuration
+config :web_researcher,
+  req: [
+    max_retries: 3,     # Retry up to 3 times
+    retry_delay: 1000   # Start with 1 second delay
+  ]
+
+# Per-request configuration
+WebResearcher.fetch_page("https://example.com", max_retries: 2, retry_delay: 2000)
 ```
 
 ## Search Providers

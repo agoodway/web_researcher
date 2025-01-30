@@ -3,6 +3,7 @@ defmodule WebResearcher.Summarizer do
   Provides LLM-powered webpage summarization functionality.
   """
 
+  require Logger
   alias WebResearcher.{WebPage, Config}
   use Instructor
 
@@ -17,24 +18,34 @@ defmodule WebResearcher.Summarizer do
     - summary: A comprehensive, detailed summary of the webpage's content that captures all key points, main ideas, and supporting information. Should be thorough and well-structured.
     - keywords: A list of relevant keywords and key phrases that represent the main topics, themes, and concepts discussed.
     - metadata: A structured map containing any tables, lists, data points, or other structured information found in the content. Tables and structured data should be preserved in their original format and structure.
+    - relevancy_score: A float between 0.0 and 1.0 indicating how relevant the content is to the search query. Higher scores indicate better relevance.
+    - relevancy_explanation: A detailed explanation of why this content is relevant (or not) to the search query, including specific matches and thematic alignments.
+    - key_matches: A list of key concepts, terms, or themes from the content that directly match or strongly relate to the search query.
     """
     @primary_key false
     embedded_schema do
       field(:summary, :string)
       field(:keywords, {:array, :string})
       field(:metadata, :map)
+      field(:relevancy_score, :float)
+      field(:relevancy_explanation, :string)
+      field(:key_matches, {:array, :string})
     end
 
     @type t :: %__MODULE__{
             summary: String.t(),
             keywords: [String.t()],
-            metadata: map()
+            metadata: map(),
+            relevancy_score: float(),
+            relevancy_explanation: String.t(),
+            key_matches: [String.t()]
           }
 
     @impl true
     def validate_changeset(changeset) do
       changeset
       |> validate_required([:summary])
+      |> validate_number(:relevancy_score, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
     end
 
     def system_prompt do
@@ -66,6 +77,18 @@ defmodule WebResearcher.Summarizer do
       - Provide specific details and concrete examples
       - Explain relationships between different concepts
       - Include relevant context and background information
+
+      RELEVANCY SCORING:
+      - Assess how well the content matches the provided search query
+      - Provide a relevancy score between 0.0 and 1.0
+      - Explain the reasoning behind the score
+      - Identify key matching concepts and themes
+      - Consider:
+        * Direct topic matches
+        * Related concepts and terminology
+        * Depth of coverage
+        * Freshness and timeliness
+        * Authority and expertise
 
       STRUCTURED DATA EXTRACTION:
       - Carefully identify all tables, lists, data structures in the content
@@ -111,7 +134,7 @@ defmodule WebResearcher.Summarizer do
   def fetch_page_and_summarize(url, opts \\ []) do
     with {:ok, webpage} <- WebResearcher.fetch_page(url, opts),
          {:ok, summary} <- summarize(webpage, opts) do
-      {:ok, webpage |> Map.merge(summary)}
+      {:ok, struct(webpage, summary)}
     end
   end
 
@@ -121,17 +144,32 @@ defmodule WebResearcher.Summarizer do
   ## Options
     * `:model` - The LLM model to use (defaults to config value)
     * `:max_retries` - Number of retries for LLM calls (defaults to config value)
+    * `:search_query` - Optional search query to score relevancy against
     * Any other options supported by Instructor
   """
   @spec summarize(WebPage.t(), keyword()) :: {:ok, map()} | {:error, atom()}
   def summarize(webpage, opts \\ [])
 
-  def summarize(%WebPage{markdown: markdown}, opts) when is_binary(markdown) do
+  def summarize(
+        %WebPage{markdown: markdown, title: title, description: description} = _webpage,
+        opts
+      )
+      when is_binary(markdown) do
     # Configure Instructor with API credentials and retry settings
     Application.put_env(:instructor, :config, Config.get_instructor_config(opts))
 
     # Get request options without min_retries
     request_opts = Config.get_request_opts(opts)
+
+    # Build the content prompt with metadata
+    content_prompt = """
+    Title: #{title || "Not available"}
+    Description: #{description || "Not available"}
+    #{if opts[:search_query], do: "\nSearch Query: #{opts[:search_query]}", else: ""}
+
+    Content:
+    #{markdown}
+    """
 
     # Make the chat completion request
     case Instructor.chat_completion(
@@ -146,9 +184,9 @@ defmodule WebResearcher.Summarizer do
                  content: """
                  Please analyze and extract information from the following web page content.
                  Focus on providing a thorough summary and properly extracting any structured data (tables, lists) into the metadata field.
+                 #{if opts[:search_query], do: "Also evaluate the content's relevance to the search query.", else: ""}
 
-                 Web page content:
-                 #{markdown}
+                 #{content_prompt}
                  """
                }
              ]
@@ -159,7 +197,10 @@ defmodule WebResearcher.Summarizer do
          %{
            summary: summary.summary,
            keywords: summary.keywords,
-           metadata: summary.metadata
+           metadata: summary.metadata,
+           relevancy_score: summary.relevancy_score,
+           relevancy_explanation: summary.relevancy_explanation,
+           key_matches: summary.key_matches
          }}
 
       error ->

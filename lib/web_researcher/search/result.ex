@@ -5,7 +5,7 @@ defmodule WebResearcher.Search.Result do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias WebResearcher.{WebPage, Search.ResultItem}
+  alias WebResearcher.Search.ResultItem
 
   @primary_key false
   embedded_schema do
@@ -14,7 +14,6 @@ defmodule WebResearcher.Search.Result do
     field(:provider, :string)
     field(:provider_metadata, :map, default: %{})
     embeds_many(:result_items, ResultItem)
-    embeds_many(:pages, WebPage)
   end
 
   @type t :: %__MODULE__{
@@ -22,15 +21,13 @@ defmodule WebResearcher.Search.Result do
           total_results: non_neg_integer(),
           provider: String.t(),
           provider_metadata: map(),
-          result_items: [ResultItem.t()],
-          pages: [WebPage.t()]
+          result_items: [ResultItem.t()]
         }
 
   def changeset(result, attrs) do
     result
-    |> cast(attrs, [:query, :total_results, :provider, :provider_metadata, :pages])
+    |> cast(attrs, [:query, :total_results, :provider, :provider_metadata])
     |> cast_embed(:result_items)
-    |> cast_embed(:pages)
     |> validate_required([:query, :provider])
   end
 
@@ -41,12 +38,6 @@ defmodule WebResearcher.Search.Result do
     # Convert any structs to maps
     attrs =
       attrs
-      |> Map.update(:pages, [], fn pages ->
-        Enum.map(pages, fn
-          %WebResearcher.WebPage{} = page -> Map.from_struct(page)
-          page -> page
-        end)
-      end)
       |> Map.update(:result_items, [], fn items ->
         Enum.map(items, fn
           %ResultItem{} = item -> Map.from_struct(item)
@@ -57,7 +48,6 @@ defmodule WebResearcher.Search.Result do
     %__MODULE__{}
     |> cast(attrs, [:query, :total_results, :provider, :provider_metadata])
     |> cast_embed(:result_items)
-    |> cast_embed(:pages)
     |> validate_required([:query])
     # Apply the changeset to get a clean struct
     |> apply_action!(:insert)

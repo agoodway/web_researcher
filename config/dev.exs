@@ -10,10 +10,6 @@ config :web_researcher,
     timeout: 10_000,
     shutdown: 5_000
   ],
-
-  # Search configuration
-  search_adapter: WebResearcher.Search.Adapters.SearXNG,
-
   # Playwright configuration
   playwright: [
     enabled: true,
@@ -30,6 +26,9 @@ config :web_researcher,
       response_format: %{type: "json_object"}
     ]
   ],
+
+  # Search Provider configuration
+  search_adapter: WebResearcher.Search.Adapters.SearXNG,
 
   # Provider configurations
   providers: [

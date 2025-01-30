@@ -76,6 +76,14 @@ defmodule WebResearcher.Config do
   end
 
   @doc """
+  Gets the maximum number of search results to process for summarization.
+  Defaults to 12 if not configured.
+  """
+  def max_search_results do
+    Application.get_env(:web_researcher, :max_search_results, 12)
+  end
+
+  @doc """
   Gets the search adapter configuration.
   """
   def get_search_config(opts \\ []) do
@@ -148,7 +156,7 @@ defmodule WebResearcher.Config do
     %{
       max_concurrency:
         get_in_opts_or_config(opts, base_config, :max_concurrency, System.schedulers_online()),
-      timeout: get_in_opts_or_config(opts, base_config, :timeout, 10_000),
+      timeout: get_in_opts_or_config(opts, base_config, :timeout, 30_000),
       shutdown: get_in_opts_or_config(opts, base_config, :shutdown, 5_000)
     }
   end
@@ -191,6 +199,18 @@ defmodule WebResearcher.Config do
     %{
       enabled: get_in_opts_or_config(opts, base_config, :enabled, true),
       timeout: get_in_opts_or_config(opts, base_config, :timeout, 30_000)
+    }
+  end
+
+  @doc """
+  Gets Req HTTP client configuration.
+  """
+  def get_req_config(opts \\ []) do
+    base_config = Application.get_env(:web_researcher, :req, [])
+
+    %{
+      max_retries: get_in_opts_or_config(opts, base_config, :max_retries, 0),
+      retry_delay: get_in_opts_or_config(opts, base_config, :retry_delay, 1000)
     }
   end
 

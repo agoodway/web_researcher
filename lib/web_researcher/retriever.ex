@@ -25,13 +25,13 @@ defmodule WebResearcher.Retriever do
       {:ok, :needs_playwright} ->
         if playwright_enabled?(opts) do
           Logger.info(
-            "Web Researcher - Content appears to be a SPA/dynamic page, using Playwright for #{url}"
+            "WebResearcher - Content appears to be a SPA/dynamic page, using Playwright for #{url}"
           )
 
           fetch_with_playwright(url, opts)
         else
           Logger.info(
-            "Web Researcher - Content appears to need JavaScript but Playwright is disabled for #{url}"
+            "WebResearcher - Content appears to be a SPA/dynamic page but Playwright is disabled"
           )
 
           {:error, :playwright_disabled}
@@ -110,18 +110,26 @@ defmodule WebResearcher.Retriever do
 
     with {:ok, {results, total, metadata}} <-
            adapter.search(query, Keyword.put(opts, :limit, limit)) do
-      # Fetch all pages in parallel using task supervisor
-      pages =
+      # Fetch all pages in parallel and associate with their result items
+      results_with_pages =
         Task.Supervisor.async_stream_nolink(
           WebResearcher.TaskSupervisor,
           results,
           fn result ->
             try do
-              fetch_page(result.url)
+              case fetch_page(result.url) do
+                {:ok, page} ->
+                  # Convert the page to a map for embedding
+                  page_map = Map.from_struct(page)
+                  Map.put(result, :web_page, page_map)
+
+                {:error, _} ->
+                  result
+              end
             rescue
-              e ->
-                Logger.error("Failed to fetch page #{result.url}: #{inspect(e)}")
-                {:error, :fetch_failed}
+              _e ->
+                # Logger.error("Failed to fetch page #{result.url}: #{inspect(e)}")
+                result
             end
           end,
           ordered: true,
@@ -130,30 +138,18 @@ defmodule WebResearcher.Retriever do
           max_concurrency: max_concurrency
         )
         |> Enum.reduce([], fn
-          {:ok, {:ok, page}}, acc ->
-            [page | acc]
-
-          {:ok, {:error, reason}}, acc ->
-            Logger.debug("Skipping failed page fetch: #{inspect(reason)}")
-            acc
-
-          {:exit, reason}, acc ->
-            Logger.debug("Task exited: #{inspect(reason)}")
-            acc
-
-          _, acc ->
-            acc
+          {:ok, result}, acc -> [result | acc]
+          _, acc -> acc
         end)
         |> Enum.reverse()
 
-      # Return the search result with pages
+      # Return the search result with pages embedded in result items
       Result.new(%{
         query: query,
         total_results: total,
         provider: adapter.provider_name(),
         provider_metadata: metadata,
-        result_items: results,
-        pages: pages
+        result_items: results_with_pages
       })
     end
   end
@@ -173,6 +169,21 @@ defmodule WebResearcher.Retriever do
 
   defp fetch_with_req(url, opts) do
     case Req.get(url, opts) do
+      {:error, %Response{status: :failed, content: nil}} ->
+        Logger.warning("WebResearcher - Failed to fetch: #{url}")
+        {:error, :fetch_failed}
+
+      {:error, %Response{status: 429}} ->
+        Logger.warning(
+          "WebResearcher - Rate limited by #{url}, consider adding delay between requests"
+        )
+
+        {:error, :rate_limited}
+
+      {:error, %Response{status: status}} when status in [403, 401] ->
+        Logger.warning("WebResearcher - Access denied (#{status}) for #{url}")
+        {:error, :access_denied}
+
       {:ok, %Response{content: content} = response} when is_binary(content) ->
         if use_playwright?(content) do
           {:ok, :needs_playwright}
@@ -180,19 +191,7 @@ defmodule WebResearcher.Retriever do
           {:ok, response}
         end
 
-      {:error, %Response{status: 429}} ->
-        Logger.warning(
-          "Web Researcher - Rate limited by #{url}, consider adding delay between requests"
-        )
-
-        {:error, :rate_limited}
-
-      {:error, %Response{status: status}} when status in [403, 401] ->
-        Logger.warning("Web Researcher - Access denied (#{status}) for #{url}")
-        {:error, :access_denied}
-
       error ->
-        Logger.error("Web Researcher - Req request failed #{inspect(error)}.")
         error
     end
   end
@@ -203,7 +202,7 @@ defmodule WebResearcher.Retriever do
         WebPage.from_response(url, response)
 
       {:error, _} = error ->
-        Logger.error("Web Researcher - Playwright request failed #{inspect(error)}.")
+        Logger.error("WebResearcher - Playwright request failed #{inspect(error)}.")
         error
     end
   end
