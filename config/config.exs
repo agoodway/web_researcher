@@ -1,9 +1,27 @@
+# For local development
+
 import Config
 
 # Set logger level to debug in development
 config :logger, level: :debug
 
+# Instructor configuration
+config :instructor,
+  adapter: Instructor.Adapters.OpenAI,
+  openai: [
+    api_key: System.get_env("INSTRUCTOR_OPENAI_API_KEY"),
+    api_url: System.get_env("INSTRUCTOR_OPENAI_API_URL"),
+    api_path: System.get_env("INSTRUCTOR_OPENAI_API_PATH")
+  ]
+
 config :web_researcher,
+  # Model configuration for Instructor
+  instructor_model: System.get_env("INSTRUCTOR_MODEL"),
+  instructor_opts: [
+    temperature: 0.7,
+    max_retries: 3
+  ],
+
   # Task supervisor configuration
   task: [
     max_concurrency: System.schedulers_online(),
@@ -16,29 +34,11 @@ config :web_researcher,
     timeout: 30_000
   ],
 
-  # LLM configuration
-  llm: [
-    provider: :openai,
-    model: "gpt-4-turbo",
-    max_retries: 3,
-    opts: [
-      temperature: 0.7,
-      response_format: %{type: "json_object"}
-    ]
-  ],
-
   # Search Provider configuration
   search_adapter: WebResearcher.Search.Adapters.SearXNG,
 
   # Provider configurations
   providers: [
-    # OpenAI provider config
-    openai: [
-      api_key: System.get_env("OPENAI_API_KEY"),
-      organization_id: System.get_env("OPENAI_ORGANIZATION_ID"),
-      api_base: System.get_env("OPENAI_API_BASE_URL")
-    ],
-
     # Brave Search provider config
     brave: [
       api_key: System.get_env("BRAVE_API_KEY"),

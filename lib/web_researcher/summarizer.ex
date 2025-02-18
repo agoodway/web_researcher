@@ -155,9 +155,6 @@ defmodule WebResearcher.Summarizer do
         opts
       )
       when is_binary(markdown) do
-    # Configure Instructor with API credentials and retry settings
-    Application.put_env(:instructor, :config, Config.get_instructor_config(opts))
-
     # Get request options without min_retries
     request_opts = Config.get_request_opts(opts)
 
@@ -174,9 +171,8 @@ defmodule WebResearcher.Summarizer do
     # Make the chat completion request
     case Instructor.chat_completion(
            [
-             model: request_opts[:model],
              response_model: WebPageSummary,
-             max_retries: request_opts[:max_retries],
+             max_retries: 1,
              messages: [
                %{role: "system", content: WebPageSummary.system_prompt()},
                %{
@@ -190,7 +186,7 @@ defmodule WebResearcher.Summarizer do
                  """
                }
              ]
-           ] ++ Keyword.drop(request_opts, [:model, :max_retries])
+           ] ++ request_opts
          ) do
       {:ok, summary} ->
         {:ok,
